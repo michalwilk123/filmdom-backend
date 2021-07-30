@@ -2,5 +2,5 @@ from django.apps import AppConfig
 
 
 class FilmdomMvpConfig(AppConfig):
-    default_auto_field = 'django.db.models.BigAutoField'
-    name = 'filmdom_mvp'
+    default_auto_field = "django.db.models.BigAutoField"
+    name = "filmdom_mvp"
