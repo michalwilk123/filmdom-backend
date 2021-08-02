@@ -17,7 +17,8 @@ router.register("genres", views.MovieGenreViewSet)
 # Additionally, we include login URLs for the browsable API.
 urlpatterns = [
     path("", include(router.urls)),
-    path('api-token-auth/', obtain_auth_token)
+    path("api-token-auth/", obtain_auth_token),
+    path("hello/", views.HelloViewSet.as_view()),
 ]
 
 urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

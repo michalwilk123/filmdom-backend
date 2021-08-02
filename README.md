@@ -2,4 +2,4 @@
 
 
 **Left to do**:
-* auth throtling
+* auth throttling
