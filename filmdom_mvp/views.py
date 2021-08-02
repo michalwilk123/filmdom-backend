@@ -32,7 +32,6 @@ class GroupViewSet(viewsets.ModelViewSet):
 class MovieViewSet(viewsets.ModelViewSet):
     queryset = Movie.objects.all()
     serializer_class = MovieSerializer
-    # permission_classes = [permissions.IsAuthenticated]
 
 
 class CommentViewSet(viewsets.ModelViewSet):

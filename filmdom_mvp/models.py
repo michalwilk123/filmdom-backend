@@ -38,7 +38,8 @@ class Movie(models.Model):
     thumbnail = models.ImageField(
         width_field="image_height",
         height_field="image_width",
-        default="noImageAvailable.png", upload_to="uploaded_images/"
+        default="noImageAvailable.png",
+        upload_to="uploaded_images/",
     )
 
     genres = models.ManyToManyField(MovieGenre, blank=True)
