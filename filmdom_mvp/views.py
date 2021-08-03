@@ -17,11 +17,12 @@ from filmdom_mvp.serializers import (
     Movie,
     Comment,
 )
+from filmdom_mvp.permissions import IsOwnerOrReadOnly, CreationAllowed, ReadOnly
 
 class UserViewSet(viewsets.ModelViewSet):
     queryset = User.objects.all().order_by("-date_joined")
     serializer_class = UserSerializer
-    permission_classes = [permissions.AllowAny]
+    permission_classes = [CreationAllowed|permissions.IsAdminUser]
 
 
 class GroupViewSet(viewsets.ModelViewSet):
@@ -33,35 +34,35 @@ class GroupViewSet(viewsets.ModelViewSet):
 class MovieViewSet(viewsets.ModelViewSet):
     queryset = Movie.objects.all()
     serializer_class = MovieSerializer
-    permission_classes = [permissions.IsAuthenticatedOrReadOnly]
+    permission_classes = [ReadOnly|permissions.IsAdminUser]
 
 
 class CommentViewSet(viewsets.ModelViewSet):
     queryset = Comment.objects.all()
     serializer_class = CommentSerializer
-    permission_classes = [permissions.IsAuthenticatedOrReadOnly]
+    permission_classes = [IsOwnerOrReadOnly|permissions.IsAdminUser]
 
 
 class DirectorViewSet(viewsets.ModelViewSet):
     queryset = Director.objects.all()
     serializer_class = DirectorSerializer
-    permission_classes = [permissions.IsAdminUser]
+    permission_classes = [ReadOnly|permissions.IsAdminUser]
 
 
 class ActorViewSet(viewsets.ModelViewSet):
     queryset = Actor.objects.all()
     serializer_class = ActorSerializer
-    permission_classes = [permissions.IsAuthenticatedOrReadOnly]
+    permission_classes = [ReadOnly|permissions.IsAdminUser]
 
 
 class MovieGenreViewSet(viewsets.ModelViewSet):
     queryset = MovieGenre.objects.all()
     serializer_class = MovieGenreSerializer
-    permission_classes = [permissions.IsAuthenticatedOrReadOnly]
+    permission_classes = [ReadOnly|permissions.IsAdminUser]
 
 
-class HelloViewSet(APIView):
+class AuthTestView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request):
-        return Response("you are logged in")
+        return Response("Your credentials were accepted")
