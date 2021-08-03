@@ -66,3 +66,4 @@ class AuthTestView(APIView):
 
     def get(self, request):
         return Response("Your credentials were accepted")
+

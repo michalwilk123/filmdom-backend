@@ -13,12 +13,10 @@ router.register("directors", views.DirectorViewSet)
 router.register("actors", views.ActorViewSet)
 router.register("genres", views.MovieGenreViewSet)
 
-# Wire up our API using automatic URL routing.
-# Additionally, we include login URLs for the browsable API.
 urlpatterns = [
     path("", include(router.urls)),
     path("api-token-auth/", obtain_auth_token),
-    path("hello/", views.HelloViewSet.as_view()),
+    path("auth/", views.AuthTestView.as_view()),
 ]
 
 urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
