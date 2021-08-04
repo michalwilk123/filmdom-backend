@@ -17,12 +17,17 @@ from filmdom_mvp.serializers import (
     Movie,
     Comment,
 )
-from filmdom_mvp.permissions import IsOwnerOrReadOnly, CreationAllowed, ReadOnly
+from filmdom_mvp.permissions import (
+    IsOwnerOrReadOnly,
+    CreationAllowed,
+    ReadOnly,
+)
+
 
 class UserViewSet(viewsets.ModelViewSet):
     queryset = User.objects.all().order_by("-date_joined")
     serializer_class = UserSerializer
-    permission_classes = [CreationAllowed|permissions.IsAdminUser]
+    permission_classes = [CreationAllowed | permissions.IsAdminUser]
 
 
 class GroupViewSet(viewsets.ModelViewSet):
@@ -32,33 +37,33 @@ class GroupViewSet(viewsets.ModelViewSet):
 
 
 class MovieViewSet(viewsets.ModelViewSet):
-    queryset = Movie.objects.all()
+    queryset = Movie.objects.all().order_by("title")
     serializer_class = MovieSerializer
-    permission_classes = [ReadOnly|permissions.IsAdminUser]
+    permission_classes = [ReadOnly | permissions.IsAdminUser]
 
 
 class CommentViewSet(viewsets.ModelViewSet):
-    queryset = Comment.objects.all()
+    queryset = Comment.objects.all().order_by("created")
     serializer_class = CommentSerializer
-    permission_classes = [IsOwnerOrReadOnly|permissions.IsAdminUser]
+    permission_classes = [IsOwnerOrReadOnly | permissions.IsAdminUser]
 
 
 class DirectorViewSet(viewsets.ModelViewSet):
-    queryset = Director.objects.all()
+    queryset = Director.objects.all().order_by("name")
     serializer_class = DirectorSerializer
-    permission_classes = [ReadOnly|permissions.IsAdminUser]
+    permission_classes = [ReadOnly | permissions.IsAdminUser]
 
 
 class ActorViewSet(viewsets.ModelViewSet):
-    queryset = Actor.objects.all()
+    queryset = Actor.objects.all().order_by("name")
     serializer_class = ActorSerializer
-    permission_classes = [ReadOnly|permissions.IsAdminUser]
+    permission_classes = [ReadOnly | permissions.IsAdminUser]
 
 
 class MovieGenreViewSet(viewsets.ModelViewSet):
-    queryset = MovieGenre.objects.all()
+    queryset = MovieGenre.objects.all().order_by("name")
     serializer_class = MovieGenreSerializer
-    permission_classes = [ReadOnly|permissions.IsAdminUser]
+    permission_classes = [ReadOnly | permissions.IsAdminUser]
 
 
 class AuthTestView(APIView):
@@ -66,4 +71,3 @@ class AuthTestView(APIView):
 
     def get(self, request):
         return Response("Your credentials were accepted")
-
