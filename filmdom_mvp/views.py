@@ -1,4 +1,5 @@
 from django.contrib.auth.models import User, Group
+from django.db.models import Avg, Count
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import permissions
@@ -22,7 +23,7 @@ from filmdom_mvp.permissions import (
     CreationAllowed,
     ReadOnly,
 )
-
+import random
 
 class UserViewSet(viewsets.ModelViewSet):
     queryset = User.objects.all().order_by("-date_joined")
@@ -41,12 +42,93 @@ class MovieViewSet(viewsets.ModelViewSet):
     serializer_class = MovieSerializer
     permission_classes = [ReadOnly | permissions.IsAdminUser]
 
+    @staticmethod
+    def validate_limit(limit) -> bool:
+        if limit is None:
+            return False
+
+        try:
+            limit = int(limit)
+        except ValueError:
+            return False
+        
+        if limit < 1:
+            return False
+        
+        return True
+
+
+    def get_queryset(self):
+        limit = self.request.query_params.get("limit")
+        sort_method = self.request.query_params.get("sort_method")
+        queryset = []
+
+        if sort_method == "best":
+            queryset = Movie.objects.annotate(average_rating=Avg("rating")).order_by("-average_rating")
+        elif sort_method == "worst":
+            queryset = Movie.objects.annotate(average_rating=Avg("rating")).order_by("average_rating")
+        elif sort_method == "most_popular":
+            queryset = Movie.objects.annotate(no_of_comments=Count("rating")).order_by("-no_of_comments")
+        elif sort_method == "least_popular":
+            queryset = Movie.objects.annotate(no_of_comments=Count("rating")).order_by("no_of_comments")
+        elif sort_method == "newest":
+            queryset = Movie.objects.all().order_by("-produce_date")
+        elif sort_method == "oldest":
+            queryset = Movie.objects.all().order_by("produce_date")
+        elif sort_method == "random":
+            queryset = Movie.objects.all()
+            random.shuffle(queryset)
+        else:
+            queryset = Movie.objects.all().order_by("title")
+
+        if MovieViewSet.validate_limit(limit):
+            self._paginator = None
+            queryset = queryset[:int(limit)]
+
+        return queryset
+
 
 class CommentViewSet(viewsets.ModelViewSet):
-    queryset = Comment.objects.all().order_by("created")
+    queryset = Comment.objects.all()
     serializer_class = CommentSerializer
     permission_classes = [IsOwnerOrReadOnly]
-    # permission_classes = [permissions.IsAdminUser]
+
+    def get_queryset(self):
+        queryset = Comment.objects.all().order_by("created")
+        limit = self.request.query_params.get("limit")
+        order_by = self.request.query_params.get("order_by")
+        title = self.request.query_params.get("title")
+        user = self.request.query_params.get("user")
+        user_id = self.request.query_params.get("user_id")
+        title_like = self.request.query_params.get("title_like")
+
+        if title is not None:
+            queryset = queryset.select_related("Movie").filter(title=title)
+            return queryset
+        elif title_like not in (None, ""):
+            queryset = queryset.select_related("Movie").filter(
+                title__icontains=title_like
+            )
+
+        if user is not None:
+            queryset = queryset.select_related("User").filter(username=user)
+        elif user_id is not None:
+            try:
+                user_id = int(user_id)
+                queryset = queryset.filter(user_id=user_id)
+            except ValueError:
+                pass 
+
+        if order_by is not None:
+            if order_by == "newest":
+                ...
+            elif order_by == "oldest":
+                queryset = queryset[::-1]
+
+        if limit is not None and limit in range(1, 100):
+            queryset = queryset[:limit]
+
+        return queryset
 
 
 class DirectorViewSet(viewsets.ModelViewSet):

@@ -1,10 +1,6 @@
 from django.db import models
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.contrib.auth.models import User
-from django.conf import settings
-from django.db.models.signals import post_save
-from django.dispatch import receiver
-from rest_framework.authtoken.models import Token
 
 
 class MovieGenre(models.Model):
@@ -29,7 +25,7 @@ class Actor(models.Model):
 
 
 class Movie(models.Model):
-    title = models.CharField(max_length=256)
+    title = models.CharField(max_length=256, unique=True)
     added_date = models.DateField(auto_now_add=True)
     produce_date = models.DateField()
     image_height = models.PositiveIntegerField(
@@ -49,7 +45,9 @@ class Movie(models.Model):
     )
 
     genres = models.ManyToManyField(MovieGenre, blank=True)
-    director = models.ForeignKey(Director, on_delete=models.CASCADE)
+    director = models.ForeignKey(
+        Director, on_delete=models.SET_NULL, null=True, blank=True
+    )
     actors = models.ManyToManyField(Actor)
 
 
