@@ -33,10 +33,12 @@ class Movie(models.Model):
     added_date = models.DateField(auto_now_add=True)
     produce_date = models.DateField()
     image_height = models.PositiveIntegerField(
-        validators=[MaxValueValidator(600), MinValueValidator(100)]
+        validators=[MaxValueValidator(600), MinValueValidator(100)],
+        default=300,
     )
     image_width = models.PositiveIntegerField(
-        validators=[MaxValueValidator(400), MinValueValidator(100)]
+        validators=[MaxValueValidator(400), MinValueValidator(100)],
+        default=200,
     )
 
     thumbnail = models.ImageField(
@@ -47,10 +49,8 @@ class Movie(models.Model):
     )
 
     genres = models.ManyToManyField(MovieGenre, blank=True)
-    director = models.ForeignKey(
-        Director, on_delete=models.CASCADE, default="Anon"
-    )
-    actor = models.ManyToManyField(Actor, blank=True)
+    director = models.ForeignKey(Director, on_delete=models.CASCADE)
+    actors = models.ManyToManyField(Actor)
 
 
 class Comment(models.Model):
@@ -61,4 +61,4 @@ class Comment(models.Model):
     text = models.CharField(blank=True, null=True, max_length=2048)
 
     creator = models.ForeignKey(User, on_delete=models.CASCADE, null=True)
-    # commented_movie = models.OneToOneField(Movie, on_delete=models.CASCADE)
+    commented_movie = models.OneToOneField(Movie, on_delete=models.CASCADE)
