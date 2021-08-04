@@ -1,10 +1,49 @@
 from filmdom_mvp import models
 from rest_framework import status
-from rest_framework.test import APIClient, APITestCase, force_authenticate
+from rest_framework.test import (
+    APIClient,
+    APITestCase,
+    APIRequestFactory,
+)
 from django.contrib.auth.models import User
+from typing import Tuple
 
 # creating dummy server
 client = APIClient()
+factory = APIRequestFactory()
+
+
+def create_dummy_movie():
+    genre = models.MovieGenre.objects.create(name="lol")
+    actor = models.Actor.objects.create(name="lol")
+    director = models.Director.objects.create(name="tarantino")
+    models.Movie.objects.filter(title="tarantino").delete()
+    movie = models.Movie.objects.create(
+        title="Lorem ipsum",
+        produce_date="2000-01-31",
+        director=director,
+    )
+    movie.genres.set([genre])
+    movie.actors.set([actor])
+    return movie
+
+
+def create_dummy_user(name,password=None,email=None) -> Tuple[User, str]:
+    if password is None:
+        password = name + "pass"
+
+    if email is None:
+        password = name + "mail"
+    
+    User.objects.filter(username = name).delete()
+    user = User.objects.create_user(name, email, password)
+
+    req = client.post(
+        "/api-token-auth/", {"username": name, "password": password}
+    ).json()
+    token = req["token"]
+    return user, token
+
 
 
 class AuthenticationTest(APITestCase):
@@ -49,24 +88,12 @@ class AuthenticationTest(APITestCase):
         )
         self.assertEqual(res.status_code, status.HTTP_400_BAD_REQUEST)
 
-    def test_owner_modify_data(self):
-        ...
-
 
 class ReadingPublicDataTest(APITestCase):
     def test_reading_comments(self):
-        genre = models.MovieGenre.objects.create(name="lol")
-        actor = models.Actor.objects.create(name="lol")
-        director = models.Director.objects.create(name="tarantino")
         alice = User.objects.create_user("alice", "ali@ce.com", "alicepass")
+        movie = create_dummy_movie()
 
-        movie = models.Movie.objects.create(
-            title="Lorem ipsum",
-            produce_date="2000-01-31",
-            director=director,
-        )
-        movie.genres.set([genre])
-        movie.actors.set([actor])
         models.Comment.objects.create(
             rating=3, text="nice movie", commented_movie=movie, creator=alice
         )
@@ -79,15 +106,8 @@ class ReadingPublicDataTest(APITestCase):
         self.assertEqual(res.status_code, status.HTTP_200_OK, res.content)
 
     def test_reading_movies(self):
-        genre = models.MovieGenre.objects.create(name="lol")
-        actor = models.Actor.objects.create(name="lol")
-        director = models.Director.objects.create(name="tarantino")
-        movie = models.Movie.objects.create(
-            title="django", produce_date="2020-12-10", director=director
-        )
+        movie = create_dummy_movie()
 
-        movie.genres.set([genre])
-        movie.actors.set([actor])
         # testing list view
         res = client.get("/movies/")
         self.assertEqual(res.status_code, status.HTTP_200_OK, res.content)
@@ -127,10 +147,6 @@ class ReadingPublicDataTest(APITestCase):
         self.assertEqual(res.status_code, status.HTTP_200_OK, res.content)
 
     def test_modify_public_data(self):
-        res = client.post("/comments/", {"rating": 3, "text": "nice movie"})
-        self.assertEqual(
-            res.status_code, status.HTTP_401_UNAUTHORIZED, res.content
-        )
         res = client.post(
             "/movies/", {"title": "django", "produce_date": "2020-12-10"}
         )
@@ -157,12 +173,16 @@ class AuthorizationTest(APITestCase):
         self.username = "admin"
         self.password = "admin_passw"
 
-        User.objects.create_user("alice", "ali@ce.com", "alicepass")
-        User.objects.create_user("bob", "bob@tt.com", "bobpass")
+        self.alice = User.objects.create_user(
+            "alice", "ali@ce.com", "alicepass"
+        )
 
         self.admin = User.objects.create_superuser(
             self.username, "test@example.com", self.password
         )
+
+    def tearDown(self):
+        User.objects.all().delete()
 
     def test_only_admin_operations(self):
         """
@@ -177,10 +197,85 @@ class AuthorizationTest(APITestCase):
         request = client.get("/users/")
         self.assertEqual(request.status_code, status.HTTP_401_UNAUTHORIZED)
 
+    def test_add_comment_by_loged_user(self):
+        create_dummy_movie()
+        alice_user, alice_token = create_dummy_user("alice")
+        res = client.post(
+            "/comments/",
+            {
+                "rating": 1,
+                "commented_movie": "/movies/1/",
+                "creator": f"/users/{alice_user.id}/",
+                "text": "not nice movie",
+            },
+            HTTP_AUTHORIZATION="Token " + alice_token
+        )
+        self.assertEqual(res.status_code, status.HTTP_201_CREATED, res.content)
+        client.logout()
+
+        res = client.post(
+            "/comments/",
+            {
+                "rating": 4,
+                "commented_movie": "/movies/1/",
+                "creator": "/users/1/",
+                "text": "totally fake comment",
+            },
+        )
+        self.assertEqual(
+            res.status_code, status.HTTP_400_BAD_REQUEST, res.content
+        )
+
+
+    def test_delete_by_authorized_user(self):
+        movie = create_dummy_movie()
+        alice_user, alice_token = create_dummy_user("alice")
+
+        res = client.post(
+            "/comments/",
+            {
+                "rating": 1,
+                "commented_movie": f"/movies/{movie.id}/",
+                "creator": f"/users/{alice_user.id}/",
+                "text": "not nice movie",
+            }, 
+            HTTP_AUTHORIZATION="Token " + alice_token
+        )
+
+        self.assertEqual(res.status_code, status.HTTP_201_CREATED, res.content)
+        res = client.get("/comments/1/")
+        self.assertEqual(res.status_code, status.HTTP_200_OK, res.content)
+
+        res = client.delete("/comments/1/", HTTP_AUTHORIZATION="Token " + alice_token)
+        self.assertEqual(res.status_code, status.HTTP_204_NO_CONTENT, res.content)
+
+        res = client.get("/comments/1/")
+        self.assertEqual(res.status_code, status.HTTP_404_NOT_FOUND, res.content)
+
+    def test_delete_by_unauthorized_user(self):
+        movie = create_dummy_movie()
+        alice_user, alice_token = create_dummy_user("alice")
+        bob_user, bob_token = create_dummy_user("bob")
+
+        comm = models.Comment.objects.create(
+            rating=2, text="lorem ipsum", commented_movie=movie, creator=alice_user
+        )
+
+        # bob (not owner) tries to delete the commment
+        res = client.delete(f"/comments/{comm.id}/", HTTP_AUTHORIZATION="Token " + bob_token)
+        self.assertEqual(res.status_code, status.HTTP_403_FORBIDDEN, res.content)
+
+        # alice deletes the comment
+        res = client.delete(f"/comments/{comm.id}/", HTTP_AUTHORIZATION="Token " + alice_token)
+        self.assertEqual(res.status_code, status.HTTP_204_NO_CONTENT, res.content)
+
+
+    def test_user_owner_operations(self):
+        ...
+
 
 class MovieDataTest(APITestCase):
     ...
-
 
 class CommentTest(APITestCase):
     ...

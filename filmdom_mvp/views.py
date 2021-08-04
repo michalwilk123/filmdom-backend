@@ -45,7 +45,8 @@ class MovieViewSet(viewsets.ModelViewSet):
 class CommentViewSet(viewsets.ModelViewSet):
     queryset = Comment.objects.all().order_by("created")
     serializer_class = CommentSerializer
-    permission_classes = [IsOwnerOrReadOnly | permissions.IsAdminUser]
+    permission_classes = [IsOwnerOrReadOnly]
+    # permission_classes = [permissions.IsAdminUser]
 
 
 class DirectorViewSet(viewsets.ModelViewSet):
