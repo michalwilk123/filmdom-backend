@@ -41,7 +41,6 @@ def create_movie(
 
     if models.Movie.objects.filter(title=title).exists():
         title = title + "1"
-        
 
     models.Movie.objects.filter(title=title).delete()
     models.MovieGenre.objects.filter(name__in=genres).delete()
@@ -83,25 +82,23 @@ def create_dummy_user(
     return user, token
 
 
-def validate_sort(collection: List, key: Callable) -> bool:
-    for i, _ in enumerate(collection[:-1]):
-        if key(collection[i], collection[i + 1]):
-            return False
-
-    return True
-
-
 def create_comments(
-    movie: models.Movie, user: models.User, *ratings: int
+    movie: models.Movie, user: models.User, *ratings: int, **kwargs
 ) -> List[models.Comment]:
     comment_list = []
     for rating in ratings:
+        if "text" in kwargs:
+            text = kwargs["text"]
+        else:
+            text = (token_urlsafe(10),)
+
         comment = models.Comment.objects.create(
             rating=rating,
-            text=token_urlsafe(10),
             commented_movie=movie,
             creator=user,
+            text=text,
         )
+
         comment_list.append(comment)
 
     return comment_list
@@ -259,32 +256,32 @@ class AuthorizationTest(APITestCase):
         self.assertEqual(request.status_code, status.HTTP_401_UNAUTHORIZED)
 
     def test_add_comment_by_loged_user(self):
-        create_movie()
+        movie = create_movie()
         alice_user, alice_token = create_dummy_user("alice")
         res = client.post(
             "/comments/",
             {
                 "rating": 1,
-                "commented_movie": "/movies/1/",
-                "creator": f"/users/{alice_user.id}/",
+                "commented_movie": movie.id,
+                "creator": alice_user.id,
                 "text": "not nice movie",
             },
             HTTP_AUTHORIZATION="Token " + alice_token,
         )
         self.assertEqual(res.status_code, status.HTTP_201_CREATED, res.content)
-        client.logout()
+        client.logout() # just to be sure..
 
         res = client.post(
             "/comments/",
             {
                 "rating": 4,
-                "commented_movie": "/movies/1/",
-                "creator": "/users/1/",
+                "commented_movie": movie.id,
+                "creator": alice_user.id,
                 "text": "totally fake comment",
             },
         )
         self.assertEqual(
-            res.status_code, status.HTTP_400_BAD_REQUEST, res.content
+            res.status_code, status.HTTP_401_UNAUTHORIZED, res.content
         )
 
     def test_delete_by_authorized_user(self):
@@ -295,8 +292,8 @@ class AuthorizationTest(APITestCase):
             "/comments/",
             {
                 "rating": 1,
-                "commented_movie": f"/movies/{movie.id}/",
-                "creator": f"/users/{alice_user.id}/",
+                "commented_movie": movie.id,
+                "creator": alice_user.id,
                 "text": "not nice movie",
             },
             HTTP_AUTHORIZATION="Token " + alice_token,
@@ -476,20 +473,97 @@ class MovieDataTest(APITestCase):
 
 
 class CommentTest(APITestCase):
-    def setUp(self):
-        ...
+    def tearDown(self):
+        models.Movie.objects.all().delete()
+        models.Comment.objects.all().delete()
+        models.User.objects.all().delete()
 
-    def test_sort_oldest(self):
-        ...
+    def test_sort_date(self):
+        m = create_movie()
+        alice, _ = create_dummy_user("alice")
 
-    def test_sort_newest(self):
-        ...
+        create_comments(m, alice, 3, text="comment1")
+        create_comments(m, alice, 4, text="comment2")
+        create_comments(m, alice, 1, text="comment3")
+        correct_order = ["comment1", "comment2", "comment3"]
+
+        res = client.get("/comments/", data={"sort_method": "newest"})
+        self.assertEqual(res.status_code, status.HTTP_200_OK, res.content)
+        title_list = [m["text"] for m in res.json()["results"]]
+        self.assertEqual(
+            title_list,
+            correct_order,
+            f"result: {title_list}, should be {correct_order}. {res.json()['results']}",
+        )
+
+        res = client.get("/comments/", data={"sort_method": "oldest"})
+        self.assertEqual(res.status_code, status.HTTP_200_OK, res.content)
+        title_list = [m["text"] for m in res.json()["results"]]
+        self.assertEqual(
+            title_list,
+            correct_order[::-1],
+            f"result: {title_list}, should be {correct_order[::-1]}",
+        )
 
     def test_filter_by_user(self):
-        ...
+        m = create_movie()
+        alice, _ = create_dummy_user("alice")
+        bob, _ = create_dummy_user("bob")
+
+        create_comments(m, alice, 3, create_date="2000-10-01", text="comment1")
+        create_comments(m, bob, 4, create_date="1990-04-11", text="comment2")
+        create_comments(m, alice, 1, create_date="2018-11-20", text="comment3")
+
+        res = client.get("/comments/", data={"user": alice.username})
+        self.assertEqual(res.status_code, status.HTTP_200_OK, res.content)
+        self.assertEqual(2, len(res.json()["results"]), res.json())
+
+        res = client.get("/comments/", data={"user": bob.username})
+        self.assertEqual(res.status_code, status.HTTP_200_OK, res.content)
+        self.assertEqual(1, len(res.json()["results"]), res.json())
+
+        # filter by id
+        res = client.get("/comments/", data={"user_id": alice.id})
+        self.assertEqual(res.status_code, status.HTTP_200_OK, res.content)
+        self.assertEqual(2, len(res.json()["results"]), res.json())
 
     def test_filter_by_movie(self):
-        ...
+        m1 = create_movie("movie1")
+        m2 = create_movie("movie2")
+        m3 = create_movie("aaaaaaaaaaa")
+        alice, _ = create_dummy_user("alice")
+
+        create_comments(
+            m1, alice, 3, create_date="2000-10-01", text="comment1"
+        )
+        create_comments(
+            m2, alice, 4, create_date="1990-04-11", text="comment2"
+        )
+        create_comments(
+            m1, alice, 1, create_date="2018-11-20", text="comment3"
+        )
+        create_comments(
+            m3, alice, 1, create_date="2018-11-20", text="comment3"
+        )
+
+        res = client.get("/comments/", data={"title": m1.title})
+        self.assertEqual(res.status_code, status.HTTP_200_OK, res.content)
+        self.assertEqual(2, len(res.json()["results"]), res.json())
+
+        res = client.get("/comments/", data={"title": m2.title})
+        self.assertEqual(res.status_code, status.HTTP_200_OK, res.content)
+        self.assertEqual(1, len(res.json()["results"]), res.json())
+
+        # filter by id
+        res = client.get("/comments/", data={"movie_id": m2.id})
+        self.assertEqual(res.status_code, status.HTTP_200_OK, res.content)
+        self.assertEqual(1, len(res.json()["results"]), res.json())
+
+        # filter by subsequence
+        res = client.get("/comments/", data={"title_like": "movie"})
+        self.assertEqual(res.status_code, status.HTTP_200_OK, res.content)
+        self.assertEqual(3, len(res.json()["results"]), res.json()["results"])
+
 
     def test_get_limit(self):
         movie = ...

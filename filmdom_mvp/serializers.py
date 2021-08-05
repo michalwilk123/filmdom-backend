@@ -24,31 +24,31 @@ class GroupSerializer(serializers.ModelSerializer):
         fields = ["url", "name"]
 
 
-class MovieSerializer(serializers.HyperlinkedModelSerializer):
+class MovieSerializer(serializers.ModelSerializer):
     class Meta:
         model = Movie
         fields = "__all__"
 
 
-class MovieGenreSerializer(serializers.HyperlinkedModelSerializer):
+class MovieGenreSerializer(serializers.ModelSerializer):
     class Meta:
         model = MovieGenre
-        fields = ["url", "name"]
+        fields = "__all__"
 
 
-class DirectorSerializer(serializers.HyperlinkedModelSerializer):
+class DirectorSerializer(serializers.ModelSerializer):
     class Meta:
         model = Director
-        fields = ["url", "name"]
+        fields = "__all__"
 
 
-class ActorSerializer(serializers.HyperlinkedModelSerializer):
+class ActorSerializer(serializers.ModelSerializer):
     class Meta:
         model = Actor
-        fields = ["name"]
+        fields = "__all__"
 
 
-class CommentSerializer(serializers.HyperlinkedModelSerializer):
+class CommentSerializer(serializers.ModelSerializer):
     class Meta:
         model = Comment
         fields = "__all__"

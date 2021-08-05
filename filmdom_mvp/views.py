@@ -1,5 +1,5 @@
 from django.contrib.auth.models import User, Group
-from django.db.models import Avg, Count, Subquery
+from django.db.models import Avg, Count
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import permissions
@@ -19,8 +19,8 @@ from filmdom_mvp.serializers import (
     Comment,
 )
 from filmdom_mvp.permissions import (
-    IsOwnerOrReadOnly,
     CreationAllowed,
+    IsOwnerOrReadonly,
     ReadOnly,
 )
 import random
@@ -100,32 +100,37 @@ class MovieViewSet(viewsets.ModelViewSet):
 class CommentViewSet(viewsets.ModelViewSet):
     queryset = Comment.objects.all()
     serializer_class = CommentSerializer
-    permission_classes = [IsOwnerOrReadOnly]
+    permission_classes = [IsOwnerOrReadonly]
 
     def get_queryset(self):
         queryset = Comment.objects.all().order_by("created")
         limit = self.request.query_params.get("limit")
-        order_by = self.request.query_params.get("order_by")
+        order_by = self.request.query_params.get("sort_method")
         title = self.request.query_params.get("title")
-        movie_id = self.request.query_params.get("title")
+        movie_id = self.request.query_params.get("movie_id")
         user = self.request.query_params.get("user")
         user_id = self.request.query_params.get("user_id")
         title_like = self.request.query_params.get("title_like")
 
         if title is not None:
-            queryset = queryset.select_related("Movie").filter(title=title)
-            return queryset
+            queryset = queryset.filter(commented_movie__title = title)
+        elif movie_id is not None:
+            try:
+                movie_id = int(movie_id)
+                queryset = queryset.filter(commented_movie__id = movie_id)
+            except ValueError:
+                pass
         elif title_like not in (None, ""):
-            queryset = queryset.select_related("Movie").filter(
-                title__icontains=title_like
+            queryset = queryset.filter(
+                commented_movie__title__icontains = title_like
             )
 
         if user is not None:
-            queryset = queryset.select_related("User").filter(username=user)
+            queryset = queryset.filter(creator__username = user)
         elif user_id is not None:
             try:
                 user_id = int(user_id)
-                queryset = queryset.filter(user_id=user_id)
+                queryset = queryset.filter(creator__id = user_id)
             except ValueError:
                 pass
 
