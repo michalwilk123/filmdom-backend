@@ -1,5 +1,5 @@
 from django.contrib.auth.models import User, Group
-from django.db.models import Avg, Count
+from django.db.models import Avg, Count, Subquery
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import permissions
@@ -24,6 +24,7 @@ from filmdom_mvp.permissions import (
     ReadOnly,
 )
 import random
+
 
 class UserViewSet(viewsets.ModelViewSet):
     queryset = User.objects.all().order_by("-date_joined")
@@ -51,12 +52,11 @@ class MovieViewSet(viewsets.ModelViewSet):
             limit = int(limit)
         except ValueError:
             return False
-        
+
         if limit < 1:
             return False
-        
-        return True
 
+        return True
 
     def get_queryset(self):
         limit = self.request.query_params.get("limit")
@@ -64,26 +64,35 @@ class MovieViewSet(viewsets.ModelViewSet):
         queryset = []
 
         if sort_method == "best":
-            queryset = Movie.objects.annotate(average_rating=Avg("rating")).order_by("-average_rating")
+            queryset = Movie.objects.annotate(
+                average_rating=Avg("comments__rating")
+            ).order_by("-average_rating")
         elif sort_method == "worst":
-            queryset = Movie.objects.annotate(average_rating=Avg("rating")).order_by("average_rating")
+            queryset = Movie.objects.annotate(
+                average_rating=Avg("comments__rating")
+            ).order_by("average_rating")
         elif sort_method == "most_popular":
-            queryset = Movie.objects.annotate(no_of_comments=Count("rating")).order_by("-no_of_comments")
+            queryset = Movie.objects.annotate(
+                no_of_comments=Count("comments")
+            ).order_by("-no_of_comments")
         elif sort_method == "least_popular":
-            queryset = Movie.objects.annotate(no_of_comments=Count("rating")).order_by("no_of_comments")
+            queryset = Movie.objects.annotate(
+                no_of_comments=Count("comments")
+            ).order_by("no_of_comments")
         elif sort_method == "newest":
             queryset = Movie.objects.all().order_by("-produce_date")
         elif sort_method == "oldest":
             queryset = Movie.objects.all().order_by("produce_date")
         elif sort_method == "random":
-            queryset = Movie.objects.all()
-            random.shuffle(queryset)
+            queryset = sorted(
+                Movie.objects.all(), key=lambda x: random.random()
+            )
         else:
             queryset = Movie.objects.all().order_by("title")
 
         if MovieViewSet.validate_limit(limit):
             self._paginator = None
-            queryset = queryset[:int(limit)]
+            queryset = queryset[: int(limit)]
 
         return queryset
 
@@ -98,6 +107,7 @@ class CommentViewSet(viewsets.ModelViewSet):
         limit = self.request.query_params.get("limit")
         order_by = self.request.query_params.get("order_by")
         title = self.request.query_params.get("title")
+        movie_id = self.request.query_params.get("title")
         user = self.request.query_params.get("user")
         user_id = self.request.query_params.get("user_id")
         title_like = self.request.query_params.get("title_like")
@@ -117,10 +127,12 @@ class CommentViewSet(viewsets.ModelViewSet):
                 user_id = int(user_id)
                 queryset = queryset.filter(user_id=user_id)
             except ValueError:
-                pass 
+                pass
 
         if order_by is not None:
             if order_by == "newest":
+                # by default we sort by date so we just ignore
+                # the parameter
                 ...
             elif order_by == "oldest":
                 queryset = queryset[::-1]

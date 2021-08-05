@@ -59,4 +59,6 @@ class Comment(models.Model):
     text = models.CharField(blank=True, null=True, max_length=2048)
 
     creator = models.ForeignKey(User, on_delete=models.CASCADE, null=True)
-    commented_movie = models.OneToOneField(Movie, on_delete=models.CASCADE)
+    commented_movie = models.ForeignKey(
+        Movie, on_delete=models.CASCADE, related_name="comments"
+    )

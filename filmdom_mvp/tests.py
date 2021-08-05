@@ -3,16 +3,15 @@ from rest_framework import status
 from rest_framework.test import (
     APIClient,
     APITestCase,
-    APIRequestFactory,
 )
 from django.contrib.auth.models import User
 from typing import Callable, Tuple, Optional, List
 import random
 from . import random_data
+from secrets import token_urlsafe
 
 # creating dummy server
 client = APIClient()
-factory = APIRequestFactory()
 
 
 def create_movie(
@@ -40,8 +39,9 @@ def create_movie(
     if actors is None:
         actors = random.sample(random_data.actors, random.randrange(1, 3))
 
-    if (movie := models.Movie.objects.filter(title=title)).exists():
-        return movie
+    if models.Movie.objects.filter(title=title).exists():
+        title = title + "1"
+        
 
     models.Movie.objects.filter(title=title).delete()
     models.MovieGenre.objects.filter(name__in=genres).delete()
@@ -66,7 +66,7 @@ def create_movie(
 
 def create_dummy_user(
     name: str, password: Optional[str] = None, email: Optional[str] = None
-) -> Tuple[User, str]:
+) -> Tuple[models.User, str]:
     if password is None:
         password = name + "pass"
 
@@ -82,8 +82,30 @@ def create_dummy_user(
     token = req["token"]
     return user, token
 
-def validate_sort(collection:List, key:Callable)->bool:
-    return False
+
+def validate_sort(collection: List, key: Callable) -> bool:
+    for i, _ in enumerate(collection[:-1]):
+        if key(collection[i], collection[i + 1]):
+            return False
+
+    return True
+
+
+def create_comments(
+    movie: models.Movie, user: models.User, *ratings: int
+) -> List[models.Comment]:
+    comment_list = []
+    for rating in ratings:
+        comment = models.Comment.objects.create(
+            rating=rating,
+            text=token_urlsafe(10),
+            commented_movie=movie,
+            creator=user,
+        )
+        comment_list.append(comment)
+
+    return comment_list
+
 
 class AuthenticationTest(APITestCase):
     """
@@ -329,6 +351,11 @@ class AuthorizationTest(APITestCase):
 
 
 class MovieDataTest(APITestCase):
+    def tearDown(self):
+        models.Movie.objects.all().delete()
+        models.Comment.objects.all().delete()
+        models.User.objects.all().delete()
+
     def test_turn_off_pagination(self):
         no_of_movies = 20
         for i in range(no_of_movies):
@@ -339,7 +366,6 @@ class MovieDataTest(APITestCase):
 
         res = client.get("/movies/")
         self.assertIn("results", res.json())
-
 
     def test_get_limit(self):
         no_of_movies = 20
@@ -355,26 +381,146 @@ class MovieDataTest(APITestCase):
             f"Movies: {len(res.json())} | should be: {limit_val}",
         )
 
+    def test_movie_sorting_rating(self):
+        alice, _ = create_dummy_user("alice")
+
+        movie1 = create_movie("movie1")
+        movie2 = create_movie("movie2")
+        movie3 = create_movie("movie3")
+
+        create_comments(movie1, alice, 4, 3, 4, 3, 2)
+        create_comments(movie2, alice, 1, 1, 1, 2, 1)
+        create_comments(movie3, alice, 4, 5, 5, 5, 5)
+        correct_order = ["movie3", "movie1", "movie2"]
+
+        res = client.get("/movies/", data={"sort_method": "best"})
+        self.assertEqual(res.status_code, status.HTTP_200_OK, res.content)
+        title_list = [m["title"] for m in res.json()["results"]]
+        self.assertEqual(
+            title_list,
+            correct_order,
+            f"result: {title_list}, should be {correct_order}",
+        )
+
+        res = client.get("/movies/", data={"sort_method": "worst"})
+        self.assertEqual(res.status_code, status.HTTP_200_OK, res.content)
+        title_list = [m["title"] for m in res.json()["results"]]
+        self.assertEqual(
+            title_list,
+            correct_order[::-1],
+            f"result: {title_list}, should be {correct_order[::-1]}",
+        )
+
+    def test_movie_sorting_date(self):
+        create_movie("movie1", produce_date="2005-12-30")
+        create_movie("movie2", produce_date="1980-05-13")
+        create_movie("movie3", produce_date="2020-01-02")
+        correct_order = ["movie3", "movie1", "movie2"]
+
+        res = client.get("/movies/", data={"sort_method": "newest"})
+        self.assertEqual(res.status_code, status.HTTP_200_OK, res.content)
+        title_list = [m["title"] for m in res.json()["results"]]
+        self.assertEqual(
+            title_list,
+            correct_order,
+            f"result: {title_list}, should be {correct_order}",
+        )
+
+        res = client.get("/movies/", data={"sort_method": "oldest"})
+        self.assertEqual(res.status_code, status.HTTP_200_OK, res.content)
+        title_list = [m["title"] for m in res.json()["results"]]
+        self.assertEqual(
+            title_list,
+            correct_order[::-1],
+            f"result: {title_list}, should be {correct_order[::-1]}",
+        )
+
+    def test_movie_sorting_popularity(self):
+        alice, _ = create_dummy_user("alice")
+
+        movie1 = create_movie("movie1")
+        movie2 = create_movie("movie2")
+        movie3 = create_movie("movie3")
+
+        create_comments(movie1, alice, 1, 1, 1, 1, 1)
+        create_comments(movie2, alice, 1, 1, 1)
+        create_comments(movie3, alice, 1, 1, 1, 1, 1, 1, 1, 1)
+        correct_order = ["movie3", "movie1", "movie2"]
+
+        res = client.get("/movies/", data={"sort_method": "most_popular"})
+        self.assertEqual(res.status_code, status.HTTP_200_OK, res.content)
+        title_list = [m["title"] for m in res.json()["results"]]
+        self.assertEqual(
+            title_list,
+            correct_order,
+            f"result: {title_list}, should be {correct_order}",
+        )
+
+        res = client.get("/movies/", data={"sort_method": "least_popular"})
+        self.assertEqual(res.status_code, status.HTTP_200_OK, res.content)
+        title_list = [m["title"] for m in res.json()["results"]]
+        self.assertEqual(
+            title_list,
+            correct_order[::-1],
+            f"result: {title_list}, should be {correct_order[::-1]}",
+        )
+
+    def test_movie_random(self):
+        create_movie()
+        create_movie()
+        create_movie()
+
+        res = client.get("/movies/", data={"sort_method": "random"})
+        self.assertEqual(res.status_code, status.HTTP_200_OK, res.content)
+        self.assertEqual(len(res.json()["results"]), 3, res.json()["results"])
+
 
 class CommentTest(APITestCase):
-    def test_comment_sorting_popularity(self):
+    def setUp(self):
         ...
 
-    def test_comment_sorting_date(self):
+    def test_sort_oldest(self):
         ...
 
-    def test_comment_sorting_rating(self):
+    def test_sort_newest(self):
         ...
 
-    def test_comment_random(self):
+    def test_filter_by_user(self):
+        ...
+
+    def test_filter_by_movie(self):
         ...
 
     def test_get_limit(self):
-        ...
+        movie = ...
+        alice = ...
+
+        NO_OF_COMMENTS = 20
+        for i in range(NO_OF_COMMENTS):
+            ...
 
 
 class DataflowTest(APITestCase):
     """
-    Testing cascades
+    Testing cascades and internal data stuff
     """
-    ...
+
+    def test_comment_cascades(self):
+        u1, _ = create_dummy_user("bob")
+
+        m1 = create_movie()
+        m2 = create_movie()
+
+        create_comments(m1, u1, 1, 2, 3, 4)
+        n_comments = models.Comment.objects.count()
+        self.assertEqual(4, n_comments, f"Ori: {n_comments} | should be 4")
+
+        u1.delete()
+        n_comments = models.Comment.objects.count()
+        self.assertEqual(0, n_comments, f"Ori: {n_comments} | should be 0")
+
+        u1, _ = create_dummy_user("bob")
+        create_comments(m1, u1, 1, 2, 3, 4)
+        m1.delete()
+        n_comments = models.Comment.objects.count()
+        self.assertEqual(0, n_comments, f"Ori: {n_comments} | should be 0")
