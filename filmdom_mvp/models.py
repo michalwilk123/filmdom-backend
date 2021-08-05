@@ -29,17 +29,19 @@ class Movie(models.Model):
     added_date = models.DateField(auto_now_add=True)
     produce_date = models.DateField()
     image_height = models.PositiveIntegerField(
-        validators=[MaxValueValidator(600), MinValueValidator(100)],
-        default=300,
+        validators=[MaxValueValidator(900), MinValueValidator(0)],
+        null=True,
+        blank=True,
     )
     image_width = models.PositiveIntegerField(
-        validators=[MaxValueValidator(400), MinValueValidator(100)],
-        default=200,
+        validators=[MaxValueValidator(720), MinValueValidator(0)],
+        null=True,
+        blank=True,
     )
 
     thumbnail = models.ImageField(
-        width_field="image_height",
-        height_field="image_width",
+        height_field="image_height",
+        width_field="image_width",
         default="noImageAvailable.png",
         upload_to="uploaded_images/",
     )
@@ -49,6 +51,12 @@ class Movie(models.Model):
         Director, on_delete=models.SET_NULL, null=True, blank=True
     )
     actors = models.ManyToManyField(Actor)
+
+    @property
+    def average_rating(self):
+        return self.comments.aggregate(avg_score=models.Avg("rating"))[
+            "avg_score"
+        ]
 
 
 class Comment(models.Model):
