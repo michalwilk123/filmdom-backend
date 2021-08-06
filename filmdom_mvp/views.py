@@ -65,12 +65,12 @@ class MovieViewSet(viewsets.ModelViewSet):
 
         if sort_method == "best":
             queryset = Movie.objects.annotate(
-                average_rating=Avg("comments__rating")
-            ).order_by("-average_rating")
+                avg_score=Avg("comments__rating")
+            ).order_by("-avg_score")
         elif sort_method == "worst":
             queryset = Movie.objects.annotate(
-                average_rating=Avg("comments__rating")
-            ).order_by("average_rating")
+                avg_score=Avg("comments__rating")
+            ).order_by("avg_score")
         elif sort_method == "most_popular":
             queryset = Movie.objects.annotate(
                 no_of_comments=Count("comments")
@@ -113,24 +113,24 @@ class CommentViewSet(viewsets.ModelViewSet):
         title_like = self.request.query_params.get("title_like")
 
         if title is not None:
-            queryset = queryset.filter(commented_movie__title = title)
+            queryset = queryset.filter(commented_movie__title=title)
         elif movie_id is not None:
             try:
                 movie_id = int(movie_id)
-                queryset = queryset.filter(commented_movie__id = movie_id)
+                queryset = queryset.filter(commented_movie__id=movie_id)
             except ValueError:
                 pass
         elif title_like not in (None, ""):
             queryset = queryset.filter(
-                commented_movie__title__icontains = title_like
+                commented_movie__title__icontains=title_like
             )
 
         if user is not None:
-            queryset = queryset.filter(creator__username = user)
+            queryset = queryset.filter(creator__username=user)
         elif user_id is not None:
             try:
                 user_id = int(user_id)
-                queryset = queryset.filter(creator__id = user_id)
+                queryset = queryset.filter(creator__id=user_id)
             except ValueError:
                 pass
 
@@ -142,8 +142,13 @@ class CommentViewSet(viewsets.ModelViewSet):
             elif order_by == "oldest":
                 queryset = queryset[::-1]
 
-        if limit is not None and limit in range(1, 100):
-            queryset = queryset[:limit]
+        if limit is not None:
+            try:
+                limit = int(limit)
+                queryset = queryset[:limit]
+                self._paginator = None
+            except ValueError:
+                pass
 
         return queryset
 
