@@ -70,10 +70,11 @@ def create_dummy_user(
         password = name + "pass"
 
     if email is None:
-        password = name + "mail"
+        email = name + "@ma.il"
 
     User.objects.filter(username=name).delete()
-    user = User.objects.create_user(name, email, password)
+    rr = client.post("/users/", {"username":name, "email":email, "password":password})
+    user = User.objects.filter(username=name).first()
 
     req = client.post(
         "/api-token-auth/", {"username": name, "password": password}
@@ -269,7 +270,7 @@ class AuthorizationTest(APITestCase):
             HTTP_AUTHORIZATION="Token " + alice_token,
         )
         self.assertEqual(res.status_code, status.HTTP_201_CREATED, res.content)
-        client.logout() # just to be sure..
+        client.logout()  # just to be sure..
 
         res = client.post(
             "/comments/",
@@ -511,21 +512,21 @@ class CommentTest(APITestCase):
         bob, _ = create_dummy_user("bob")
 
         create_comments(m, alice, 3, create_date="2000-10-01", text="comment1")
+        create_comments(m, alice, 1, create_date="2000-10-29", text="iiicomment1")
         create_comments(m, bob, 4, create_date="1990-04-11", text="comment2")
-        create_comments(m, alice, 1, create_date="2018-11-20", text="comment3")
 
         res = client.get("/comments/", data={"user": alice.username})
         self.assertEqual(res.status_code, status.HTTP_200_OK, res.content)
-        self.assertEqual(2, len(res.json()["results"]), res.json())
+        self.assertEqual(2, len(res.json()["results"]), res.json()["results"])
 
         res = client.get("/comments/", data={"user": bob.username})
         self.assertEqual(res.status_code, status.HTTP_200_OK, res.content)
-        self.assertEqual(1, len(res.json()["results"]), res.json())
+        self.assertEqual(1, len(res.json()["results"]), res.json()["results"])
 
         # filter by id
         res = client.get("/comments/", data={"user_id": alice.id})
         self.assertEqual(res.status_code, status.HTTP_200_OK, res.content)
-        self.assertEqual(2, len(res.json()["results"]), res.json())
+        self.assertEqual(2, len(res.json()["results"]), res.json()["results"])
 
     def test_filter_by_movie(self):
         m1 = create_movie("movie1")
@@ -566,12 +567,21 @@ class CommentTest(APITestCase):
 
 
     def test_get_limit(self):
-        movie = ...
-        alice = ...
+        movie = create_movie()
+        alice, _ = create_dummy_user("alice")
+        no_of_comments = 20
 
-        NO_OF_COMMENTS = 20
-        for i in range(NO_OF_COMMENTS):
-            ...
+        create_comments(movie, alice, *tuple([1 for i in range(no_of_comments)]))
+
+        res = client.get("/comments/", data={"limit": 10})
+        self.assertEqual(res.status_code, status.HTTP_200_OK, res.content)
+        self.assertEqual(10, len(res.json()), res.json())
+
+        res = client.get("/comments/", data={"limit": 20})
+        self.assertEqual(res.status_code, status.HTTP_200_OK, res.content)
+        self.assertEqual(20, len(res.json()), res.json())
+
+
 
 
 class DataflowTest(APITestCase):
@@ -598,3 +608,4 @@ class DataflowTest(APITestCase):
         m1.delete()
         n_comments = models.Comment.objects.count()
         self.assertEqual(0, n_comments, f"Ori: {n_comments} | should be 0")
+
