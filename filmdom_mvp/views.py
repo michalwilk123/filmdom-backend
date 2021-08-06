@@ -157,18 +157,21 @@ class DirectorViewSet(viewsets.ModelViewSet):
     queryset = Director.objects.all().order_by("name")
     serializer_class = DirectorSerializer
     permission_classes = [ReadOnly | permissions.IsAdminUser]
+    pagination_class = None
 
 
 class ActorViewSet(viewsets.ModelViewSet):
     queryset = Actor.objects.all().order_by("name")
     serializer_class = ActorSerializer
     permission_classes = [ReadOnly | permissions.IsAdminUser]
+    pagination_class = None
 
 
 class MovieGenreViewSet(viewsets.ModelViewSet):
     queryset = MovieGenre.objects.all().order_by("name")
     serializer_class = MovieGenreSerializer
     permission_classes = [ReadOnly | permissions.IsAdminUser]
+    pagination_class = None
 
 
 class AuthTestView(APIView):

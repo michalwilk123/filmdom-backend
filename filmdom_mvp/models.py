@@ -51,6 +51,7 @@ class Movie(models.Model):
         Director, on_delete=models.SET_NULL, null=True, blank=True
     )
     actors = models.ManyToManyField(Actor)
+    text = models.CharField(blank=True, null=True, max_length=4096)
 
     @property
     def average_rating(self):
@@ -67,7 +68,7 @@ class Comment(models.Model):
         validators=[MaxValueValidator(5), MinValueValidator(0)]
     )
     created = models.DateField(auto_now_add=True)
-    text = models.CharField(blank=True, null=True, max_length=2048)
+    text = models.CharField(blank=True, null=True, max_length=4096)
 
     creator = models.ForeignKey(User, on_delete=models.CASCADE, null=True)
     commented_movie = models.ForeignKey(

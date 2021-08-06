@@ -26,6 +26,7 @@ class GroupSerializer(serializers.ModelSerializer):
 
 class MovieSerializer(serializers.ModelSerializer):
     average_rating  = serializers.ReadOnlyField()
+    director_name = serializers.ReadOnlyField(source="director.name")
     class Meta:
         model = Movie
         fields = "__all__"
