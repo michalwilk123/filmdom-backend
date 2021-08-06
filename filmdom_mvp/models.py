@@ -58,6 +58,9 @@ class Movie(models.Model):
             "avg_score"
         ]
 
+    def __str__(self):
+        return f"Name: {self.title} | rating:{self.average_rating}"
+
 
 class Comment(models.Model):
     rating = models.FloatField(
@@ -70,3 +73,6 @@ class Comment(models.Model):
     commented_movie = models.ForeignKey(
         Movie, on_delete=models.CASCADE, related_name="comments"
     )
+
+    def __str__(self):
+        return f"Creator: {self.creator.username} | Rating: {self.rating} | Text: {self.text}"
