@@ -4,6 +4,8 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import permissions
 from rest_framework import viewsets
+from rest_framework.authtoken.views import ObtainAuthToken
+from rest_framework.authtoken.models import Token
 from filmdom_mvp.serializers import (
     ActorSerializer,
     CommentSerializer,
@@ -24,6 +26,19 @@ from filmdom_mvp.permissions import (
     ReadOnly,
 )
 import random
+
+
+class MyAuthToken(ObtainAuthToken):
+    def post(self, request, *args, **kwargs):
+        serializer = self.serializer_class(
+            data=request.data, context={"request": request}
+        )
+        serializer.is_valid(raise_exception=True)
+        user = serializer.validated_data["user"]
+        token, created = Token.objects.get_or_create(user=user)
+        return Response(
+            {"token": token.key, "user_id": user.pk, "email": user.email}
+        )
 
 
 class UserViewSet(viewsets.ModelViewSet):
@@ -61,7 +76,7 @@ class MovieViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         limit = self.request.query_params.get("limit")
         sort_method = self.request.query_params.get("sort_method")
-        queryset = []
+        title_like = self.request.query_params.get("title_like")
 
         if sort_method == "best":
             queryset = Movie.objects.annotate(
@@ -89,6 +104,12 @@ class MovieViewSet(viewsets.ModelViewSet):
             )
         else:
             queryset = Movie.objects.all().order_by("title")
+
+        if title_like:
+            try:
+                queryset = queryset.filter(title__icontains=title_like)
+            except AttributeError:
+                pass
 
         if MovieViewSet.validate_limit(limit):
             self._paginator = None
@@ -136,11 +157,9 @@ class CommentViewSet(viewsets.ModelViewSet):
 
         if order_by is not None:
             if order_by == "newest":
-                # by default we sort by date so we just ignore
-                # the parameter
-                ...
-            elif order_by == "oldest":
                 queryset = queryset[::-1]
+            elif order_by == "oldest":
+                ...
 
         if limit is not None:
             try:

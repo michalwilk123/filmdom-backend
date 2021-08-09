@@ -73,7 +73,9 @@ def create_dummy_user(
         email = name + "@ma.il"
 
     User.objects.filter(username=name).delete()
-    rr = client.post("/users/", {"username":name, "email":email, "password":password})
+    rr = client.post(
+        "/users/", {"username": name, "email": email, "password": password}
+    )
     user = User.objects.filter(username=name).first()
 
     req = client.post(
@@ -472,6 +474,19 @@ class MovieDataTest(APITestCase):
         self.assertEqual(res.status_code, status.HTTP_200_OK, res.content)
         self.assertEqual(len(res.json()["results"]), 3, res.json()["results"])
 
+    def test_movie_title_subseq(self):
+        m1 = create_movie("0000movie000")
+        m2 = create_movie("aaaaaaa")
+        m3 = create_movie("movie000")
+        m4 = create_movie("MoVIe")
+
+        # setting limit so we are not paginating the results
+        res = client.get(
+            "/movies/", data={"title_like": "movie", "limit": 100}
+        )
+        self.assertEqual(res.status_code, status.HTTP_200_OK, res.content)
+        self.assertEqual(len(res.json()), 3, res.json())
+
 
 class CommentTest(APITestCase):
     def tearDown(self):
@@ -486,7 +501,7 @@ class CommentTest(APITestCase):
         create_comments(m, alice, 3, text="comment1")
         create_comments(m, alice, 4, text="comment2")
         create_comments(m, alice, 1, text="comment3")
-        correct_order = ["comment1", "comment2", "comment3"]
+        correct_order = ["comment3", "comment2", "comment1"]
 
         res = client.get("/comments/", data={"sort_method": "newest"})
         self.assertEqual(res.status_code, status.HTTP_200_OK, res.content)
@@ -512,7 +527,9 @@ class CommentTest(APITestCase):
         bob, _ = create_dummy_user("bob")
 
         create_comments(m, alice, 3, create_date="2000-10-01", text="comment1")
-        create_comments(m, alice, 1, create_date="2000-10-29", text="iiicomment1")
+        create_comments(
+            m, alice, 1, create_date="2000-10-29", text="iiicomment1"
+        )
         create_comments(m, bob, 4, create_date="1990-04-11", text="comment2")
 
         res = client.get("/comments/", data={"user": alice.username})
@@ -565,13 +582,14 @@ class CommentTest(APITestCase):
         self.assertEqual(res.status_code, status.HTTP_200_OK, res.content)
         self.assertEqual(3, len(res.json()["results"]), res.json()["results"])
 
-
     def test_get_limit(self):
         movie = create_movie()
         alice, _ = create_dummy_user("alice")
         no_of_comments = 20
 
-        create_comments(movie, alice, *tuple([1 for i in range(no_of_comments)]))
+        create_comments(
+            movie, alice, *tuple([1 for i in range(no_of_comments)])
+        )
 
         res = client.get("/comments/", data={"limit": 10})
         self.assertEqual(res.status_code, status.HTTP_200_OK, res.content)
@@ -580,8 +598,6 @@ class CommentTest(APITestCase):
         res = client.get("/comments/", data={"limit": 20})
         self.assertEqual(res.status_code, status.HTTP_200_OK, res.content)
         self.assertEqual(20, len(res.json()), res.json())
-
-
 
 
 class DataflowTest(APITestCase):
@@ -608,4 +624,3 @@ class DataflowTest(APITestCase):
         m1.delete()
         n_comments = models.Comment.objects.count()
         self.assertEqual(0, n_comments, f"Ori: {n_comments} | should be 0")
-

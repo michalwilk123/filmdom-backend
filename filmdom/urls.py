@@ -3,7 +3,6 @@ from rest_framework import routers
 from filmdom_mvp import views
 from filmdom import settings
 from django.conf.urls.static import static
-from rest_framework.authtoken.views import obtain_auth_token
 from django.contrib import admin
 from filmdom_mvp import models
 
@@ -24,7 +23,7 @@ admin.site.register(models.Director)
 urlpatterns = [
     path("", include(router.urls)),
     path('admin/', admin.site.urls),
-    path("api-token-auth/", obtain_auth_token),
+    path("api-token-auth/", views.MyAuthToken.as_view()),
     path("auth/", views.AuthTestView.as_view()),
 ]
 
