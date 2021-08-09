@@ -25,8 +25,9 @@ class GroupSerializer(serializers.ModelSerializer):
 
 
 class MovieSerializer(serializers.ModelSerializer):
-    average_rating  = serializers.ReadOnlyField()
+    average_rating = serializers.ReadOnlyField()
     director_name = serializers.ReadOnlyField(source="director.name")
+
     class Meta:
         model = Movie
         fields = "__all__"
@@ -51,6 +52,9 @@ class ActorSerializer(serializers.ModelSerializer):
 
 
 class CommentSerializer(serializers.ModelSerializer):
+    creator_name = serializers.ReadOnlyField(source="creator.username")
+    movie_title = serializers.ReadOnlyField(source="commented_movie.title")
+
     class Meta:
         model = Comment
         fields = "__all__"
