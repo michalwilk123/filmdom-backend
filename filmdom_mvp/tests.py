@@ -5,7 +5,7 @@ from rest_framework.test import (
     APITestCase,
 )
 from django.contrib.auth.models import User
-from typing import Callable, Tuple, Optional, List
+from typing import Tuple, Optional, List
 import random
 from . import random_data
 from secrets import token_urlsafe
@@ -509,7 +509,10 @@ class CommentTest(APITestCase):
         self.assertEqual(
             title_list,
             correct_order,
-            f"result: {title_list}, should be {correct_order}. {res.json()['results']}",
+            (
+                f"result: {title_list}, should be {correct_order}."
+                f" {res.json()['results']}"
+            ),
         )
 
         res = client.get("/comments/", data={"sort_method": "oldest"})

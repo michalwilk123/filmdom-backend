@@ -76,4 +76,7 @@ class Comment(models.Model):
     )
 
     def __str__(self):
-        return f"Creator: {self.creator.username} | Rating: {self.rating} | Text: {self.text}"
+        return (
+            f"Creator: {self.creator.username} | "
+            f"Rating: {self.rating} | Text: {self.text}"
+        )
