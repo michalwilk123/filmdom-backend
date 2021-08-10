@@ -94,6 +94,9 @@ DATABASES = {
         "PASSWORD": 'michal', # i know this is bad..
         "HOST": "localhost",
         "PORT": "",
+        "TEST": {
+            "NAME": "filmdom_test",
+        }
     }
 }
 
