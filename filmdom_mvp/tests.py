@@ -155,7 +155,7 @@ class ReadingPublicDataTest(APITestCase):
         alice = User.objects.create_user("alice", "ali@ce.com", "alicepass")
         movie = create_movie()
 
-        models.Comment.objects.create(
+        comment = models.Comment.objects.create(
             rating=3, text="nice movie", commented_movie=movie, creator=alice
         )
         # testing list view
@@ -163,7 +163,7 @@ class ReadingPublicDataTest(APITestCase):
         self.assertEqual(res.status_code, status.HTTP_200_OK, res.content)
 
         # testing detail view
-        res = client.get("/comments/1/")
+        res = client.get(f"/comments/{comment.id}/")
         self.assertEqual(res.status_code, status.HTTP_200_OK, res.content)
 
     def test_reading_movies(self):
@@ -178,33 +178,33 @@ class ReadingPublicDataTest(APITestCase):
         self.assertEqual(res.status_code, status.HTTP_200_OK, res.content)
 
     def test_reading_directors(self):
-        models.Director.objects.create(name="tarantino")
+        director = models.Director.objects.create(name="tarantino")
         # testing list view
         res = client.get("/directors/")
         self.assertEqual(res.status_code, status.HTTP_200_OK, res.content)
 
         # testing detail view
-        res = client.get("/directors/1/")
+        res = client.get(f"/directors/{director.id}/")
         self.assertEqual(res.status_code, status.HTTP_200_OK, res.content)
 
     def test_reading_genres(self):
-        models.MovieGenre.objects.create(name="drama")
+        genre = models.MovieGenre.objects.create(name="drama")
         # testing list view
         res = client.get("/genres/")
         self.assertEqual(res.status_code, status.HTTP_200_OK, res.content)
 
         # testing detail view
-        res = client.get("/genres/1/")
+        res = client.get(f"/genres/{genre.id}/")
         self.assertEqual(res.status_code, status.HTTP_200_OK, res.content)
 
     def test_reading_actors(self):
-        models.Actor.objects.create(name="robert de niro")
+        actor = models.Actor.objects.create(name="robert de niro")
         # testing list view
         res = client.get("/actors/")
         self.assertEqual(res.status_code, status.HTTP_200_OK, res.content)
 
         # testing detail view
-        res = client.get("/actors/1/")
+        res = client.get(f"/actors/{actor.id}/")
         self.assertEqual(res.status_code, status.HTTP_200_OK, res.content)
 
     def test_modify_public_data(self):
@@ -303,17 +303,17 @@ class AuthorizationTest(APITestCase):
         )
 
         self.assertEqual(res.status_code, status.HTTP_201_CREATED, res.content)
-        res = client.get("/comments/1/")
+        res = client.get(f"/comments/{movie.id}/")
         self.assertEqual(res.status_code, status.HTTP_200_OK, res.content)
 
         res = client.delete(
-            "/comments/1/", HTTP_AUTHORIZATION="Token " + alice_token
+            f"/comments/{movie.id}/", HTTP_AUTHORIZATION="Token " + alice_token
         )
         self.assertEqual(
             res.status_code, status.HTTP_204_NO_CONTENT, res.content
         )
 
-        res = client.get("/comments/1/")
+        res = client.get(f"/comments/{movie.id}/")
         self.assertEqual(
             res.status_code, status.HTTP_404_NOT_FOUND, res.content
         )
