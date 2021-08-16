@@ -56,7 +56,7 @@ MIDDLEWARE = [
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
 
-CORS_ORIGIN_WHITELIST = ("http://localhost:3000",)
+CORS_ORIGIN_WHITELIST = ("http://172.23.0.5:3000",)
 
 ROOT_URLCONF = "filmdom.urls"
 
@@ -92,14 +92,18 @@ DATABASES = {
         "NAME": 'filmdom',
         "USER": 'michal',
         "PASSWORD": 'michal', # i know this is bad..
-        "HOST": "localhost",
-        "PORT": "",
+        "HOST": "db",
+        "PORT": 5432,
         "TEST": {
             "NAME": "filmdom_test",
         }
     }
 }
 
+CELERY_BROKER_URL= "amqp://guest:guest@rabbit1:5672//"
+CELERY_TASK_SERIALIZER= 'json'
+CELERY_RESULT_SERIALIZER= 'json'
+CELERY_ACCEPT_CONTENT= ['json']
 
 # Password validation
 # https://docs.djangoproject.com/en/3.2/ref/settings/#auth-password-validators
