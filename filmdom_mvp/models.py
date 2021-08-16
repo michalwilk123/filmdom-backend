@@ -46,6 +46,8 @@ class Movie(models.Model):
         upload_to="uploaded_images/",
     )
 
+    remote_thumbnail = models.URLField(blank=True, null=True)
+
     genres = models.ManyToManyField(MovieGenre, blank=True)
     director = models.ForeignKey(
         Director, on_delete=models.SET_NULL, null=True, blank=True
