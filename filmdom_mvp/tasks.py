@@ -18,7 +18,7 @@ from django.db.utils import IntegrityError
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 file_handler = logging.FileHandler("filmdom_worker.log")
-file_handler.setLevel(logging.DEBUG)
+file_handler.setLevel(logging.INFO)
 file_handler.setFormatter(
     logging.Formatter("%(asctime)s : %(levelname)s : %(name)s : %(message)s")
 )
@@ -39,12 +39,9 @@ def at_start(sender, **kwargs):
 
 @app.task
 def fetch_movie_data():
-    logger.debug(
-        f"Started fetching data about movies: {datetime.now().isoformat()}"
-    )
-    logger.error("hello i am an error!")
+    logger.debug("Started task: fetching movie data from TMDM API")
     asyncio.run(start_data_fetch())
-    logger.debug(f"Ended fetching data at: {datetime.now().isoformat()}")
+    logger.debug("TMDB Celery task has finished with success")
 
 
 def decompress_request(data: bytes) -> str:
@@ -154,6 +151,7 @@ async def fetch_all_movies(session: aiohttp.ClientSession):
 
 
 async def fetch_all_genres(session: aiohttp.ClientSession):
+    logger.info("Fetching genre data")
     genres = await session.get(task_utils.create_genres_query())
     assert genres.status == 200, "could not get movie genres"
     genre_list = (await genres.json())["genres"]
@@ -170,12 +168,13 @@ async def fetch_all_genres(session: aiohttp.ClientSession):
             )
         else:
             logger.debug(f"Genre with name: {g['name']} already exists")
+    
 
 
 async def start_data_fetch():
     async with aiohttp.ClientSession() as client:
         # this is cheap. We allow blocking
-        # genre_task = await fetch_all_genres(client)
+        genre_task = await fetch_all_genres(client)
 
         # this is expensive
         movie_task = await fetch_all_movies(client)
