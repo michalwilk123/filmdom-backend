@@ -40,7 +40,6 @@ def at_start(sender, **kwargs):
 @app.task
 def fetch_movie_data():
     logger.debug("Started task: fetching movie data from TMDM API")
-    assert False;
     asyncio.run(start_data_fetch())
     logger.debug("TMDB Celery task has finished with success")
 
