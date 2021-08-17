@@ -28,7 +28,7 @@ logger.addHandler(file_handler)
 @app.on_after_finalize.connect
 def setup_periodic_task(sender, **kwargs):
     sender.add_periodic_task(
-        crontab(hour=7), fetch_movie_data.s(), name="fetch movie data"
+        crontab(hour=7, minute=0), fetch_movie_data.s(), name="fetch movie data"
     )
 
 
@@ -40,6 +40,7 @@ def at_start(sender, **kwargs):
 @app.task
 def fetch_movie_data():
     logger.debug("Started task: fetching movie data from TMDM API")
+    assert False;
     asyncio.run(start_data_fetch())
     logger.debug("TMDB Celery task has finished with success")
 
