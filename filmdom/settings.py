@@ -56,7 +56,7 @@ MIDDLEWARE = [
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
 
-CORS_ORIGIN_WHITELIST = ("http://172.23.0.5:3000",)
+CORS_ORIGIN_WHITELIST = ("http://localhost:3000",)
 
 ROOT_URLCONF = "filmdom.urls"
 
