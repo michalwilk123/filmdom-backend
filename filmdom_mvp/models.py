@@ -52,7 +52,7 @@ class Movie(models.Model):
     director = models.ForeignKey(
         Director, on_delete=models.SET_NULL, null=True, blank=True
     )
-    actors = models.ManyToManyField(Actor)
+    actors = models.ManyToManyField(Actor, blank=True)
     text = models.CharField(blank=True, null=True, max_length=4096)
 
     @property
