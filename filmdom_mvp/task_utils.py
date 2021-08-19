@@ -1,6 +1,10 @@
 from datetime import datetime, timedelta
+from dotenv import load_dotenv
+import os
 
-API_KEY = "4d571ebf7300e30c04862d92ad6d4936"
+load_dotenv()
+
+API_KEY = os.environ["TMDB_API_KEY"]
 
 
 def create_raw_movie_query() -> str:

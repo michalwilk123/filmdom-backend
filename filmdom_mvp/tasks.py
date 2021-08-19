@@ -28,7 +28,9 @@ logger.addHandler(file_handler)
 @app.on_after_finalize.connect
 def setup_periodic_task(sender, **kwargs):
     sender.add_periodic_task(
-        crontab(hour=7, minute=0), fetch_movie_data.s(), name="fetch movie data"
+        crontab(hour=7, minute=0),
+        fetch_movie_data.s(),
+        name="fetch movie data",
     )
 
 
@@ -116,15 +118,16 @@ async def fetch_one_movie(
             text=movie_data["overview"],
         )
     except IntegrityError:
-        logger.debug("Tried to add movie with exact "
+        logger.debug(
+            "Tried to add movie with exact "
             "same title. Ignored operation to save the fetching process"
         )
         return
 
     await sync_to_async(movie.genres.set)(
-        await sync_to_async(
-            models.MovieGenre.objects.filter
-        )(id__in=[el["id"] for el in movie_data["genres"]])
+        await sync_to_async(models.MovieGenre.objects.filter)(
+            id__in=[el["id"] for el in movie_data["genres"]]
+        )
     )
 
 
@@ -168,7 +171,6 @@ async def fetch_all_genres(session: aiohttp.ClientSession):
             )
         else:
             logger.debug(f"Genre with name: {g['name']} already exists")
-    
 
 
 async def start_data_fetch():
